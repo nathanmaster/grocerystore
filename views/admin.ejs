@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <a href="/admin/product/add">Add Product</a>
+    <ul>
+        <% products.forEach(product => { %>
+            <li>
+                <%= product.name %> - $<%= product.price %> - <%= product.weight %>kg
+                <a href="/admin/product/update/<%= product._id %>">Update</a>
+                <form action="/admin/product/delete/<%= product._id %>" method="POST" style="display:inline;">
+                    <button type="submit">Delete</button>
+                </form>
+            </li>
+        <% }) %>
+    </ul>
+</body>
+</html>
