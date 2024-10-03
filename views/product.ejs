@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title><%= product.name %></title>
+    </head>
+    <body>
+        <h1><%= product.name %></h1>
+
+        <p>Price: $<%= product.price %></p>
+
+        <p>Weight: $<%= product.weight %></p>
+
+        <h2> Update Product</h2>
+
+        <form action="/product/update/<%= product.id%>"method="POST">
+            <input type="text" name="name" placeholder="Name" required>
+            <input type="number" step="0.01" name="price" placeholder="Price" required>
+            <input type="number" step="0.01" name="weight" placeholder="Weight (kg)" required>
+            <button type="submit">Update</button>
+        </form>
+
+        <a href="/"><br><br> Back to store</a>
+    </body>
+</html>
