@@ -1,14 +1,23 @@
 const LocalStrategy = require('passport-local').Strategy;
-const User = require('../models/User');
+const GroceryStore = require('../GroceryStore');
+const DummyDB = require('../db/dummyDB'); // Import the singleton DummyDB instance
+
+// Initialize the grocery store with the singleton DummyDB instance
+const groceryStore = new GroceryStore(DummyDB);
 
 module.exports = function (passport) {
     passport.use(new LocalStrategy(async (username, password, done) => {
         try {
-            const user = await User.findOne({ username });
-            if (!user) return done(null, false, { message: 'Incorrect username.'});
+            const user = await groceryStore.findUserByUsername(username);
+            if (!user) {
+                return done(null, false, { message: 'Incorrect username.' });
+            }
 
-            const isMatch = await user.comparePassword(password);
-            if (!isMatch) return done(null, false, { message: 'Incorrect password.'});
+            // Simulate password comparison (in a real app, use a hashed password)
+            const isMatch = user.password === password;
+            if (!isMatch) {
+                return done(null, false, { message: 'Incorrect password.' });
+            }
 
             return done(null, user);
         } catch (err) {
@@ -22,9 +31,8 @@ module.exports = function (passport) {
 
     passport.deserializeUser(async (id, done) => {
         try {
-            const user = await User.findById(id);
+            const user = await groceryStore.findUserById(id);
             done(null, user);
-        
         } catch (err) {
             done(err);
         }

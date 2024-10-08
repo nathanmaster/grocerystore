@@ -9,7 +9,7 @@
         <% cartItems.forEach(item => { %>
             <li>
                 <%= item.product.name %> - $<%= item.product.price %> - <%= item.quantity %> pcs
-                <form action="/cart/remove/<%= item.product._id %>" method="POST" style="display:inline;">
+                <form action="/cart/remove/<%= item.product.id %>" method="POST" style="display:inline;">
                     <input type="hidden" name="_method" value="DELETE">
                     <button type="submit">Remove</button>
                 </form>

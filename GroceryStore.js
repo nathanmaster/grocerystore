@@ -1,89 +1,50 @@
-const Product = require('./models/Product');
-const User = require('./models/User');
-const mongoose = require('mongoose');
-
 class GroceryStore {
+    constructor(db) {
+        this.db = db;
+    }
+
     async addProduct(name, price, weight) {
-        const product = new Product({ name, price, weight });
-        await product.save();
-        return product;
+        return await this.db.addProduct(name, price, weight);
     }
 
     async getProducts() {
-        return await Product.find({});
+        return await this.db.getProducts();
     }
 
     async getProductById(id) {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error('Invalid product ID');
-        }
-        const product = await Product.findById(id);
-        if(!product) {
-            throw new Error('Product not found');
-        }
-
-        return product;
+        return await this.db.getProductById(id);
     }
 
     async updateProduct(id, updatedData) {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error('Invalid product ID');
-        }
-        const updatedProduct = await Product.findByIdAndUpdate(id, updatedData, { new: true });
-        if(!updatedProduct) {
-            throw new Error('Product not found');
-        }
-        return updatedProduct;
+        return await this.db.updateProduct(id, updatedData);
     }
 
     async deleteProduct(id) {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error('Invalid product ID');
-        }
-        const deletedProduct = await Product.findByIdAndDelete(id);
-        if(!deletedProduct) {
-            throw new Error('Product not found');
-        }
-
-        return deletedProduct;
+        return await this.db.deleteProduct(id);
     }
 
     async addToCart(userId, productId) {
-        if (!mongoose.Types.ObjectId.isValid(productId)) {
-            throw new Error('Invalid product ID');
-        }
-        const user = await User.findById(userId);
-        if (!user) throw new Error('User not found');
-
-        const cartItem = user.cart.find(item => item.productId.toString() === productId);
-        if (cartItem) {
-            cartItem.quantity += 1;
-        } else {
-            user.cart.push({ productId: new mongoose.Types.ObjectId(productId), quantity: 1 });
-        }
-        await user.save();
+        return await this.db.addToCart(userId, productId);
     }
 
     async getCartItems(userId) {
-        const user = await User.findById(userId).populate('cart.productId');
-        if (!user) throw new Error('User not found');
-
-        user.cart = user.cart.filter(item => item.productId);
-        await user.save;
-
-
-        return user.cart.map(item => ({
-            product: item.productId,
-            quantity: item.quantity
-        }));
+        return await this.db.getCartItems(userId);
     }
 
     async removeFromCart(userId, productId) {
-        const user = await User.findById(userId);
-        if (!user) throw new Error('User not found');
+        return await this.db.removeFromCart(userId, productId);
+    }
 
-        user.cart = user.cart.filter(item => item.productId.toString() !== productId);
-        await user.save();
+    async addUser(username, password) {
+        return await this.db.addUser(username, password);
+    }
+
+    async findUserByUsername(username) {
+        return await this.db.findUserByUsername(username);
+    }
+
+    async findUserById(id) {
+        return await this.db.findUserById(id);
     }
 }
 

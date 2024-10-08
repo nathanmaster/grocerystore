@@ -3,33 +3,31 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const passport = require('passport');
-const mongoose = require('mongoose');
-const GroceryStore = require('./GroceryStore');
-const User = require('./models/User');
-require('./config/passport')(passport);
-const app = express();
-const store = new GroceryStore();
 const methodOverride = require('method-override');
+const DummyDB = require('./db/dummyDB'); // Import the singleton DummyDB instance
+const GroceryStore = require('./GroceryStore');
+require('./config/passport')(passport);
+
+const app = express();
 app.use(methodOverride('_method'));
 
-mongoose.connect('mongodb://127.0.0.1:27017/grocery-store', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
-    console.log('Connected to MongoDB');
-}).catch((err) => {
-    console.error('Error connecting to MongoDB:', err);
-});
+const store = new GroceryStore(DummyDB); // Pass the singleton instance to the GroceryStore class
 
-// Set the view engine to ejs
+
 app.set('view engine', 'ejs');
-
-// Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({ secret: 'secret', resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Connect to the database
+DummyDB.connect().catch(err => {
+    console.error('Error connecting to the database:', err);
+    process.exit(1);
+});
+
+store.addProduct('Apple', parseFloat(.2), parseFloat(.11))
 
 // Routes
 app.get('/', async (req, res) => {
@@ -133,8 +131,7 @@ app.get('/register', (req, res) => {
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     try {
-        const user = new User({ username, password });
-        await user.save();
+        await store.addUser(username, password); // Use GroceryStore method
         res.redirect('/login');
     } catch (err) {
         res.status(500).send('Error registering user');
@@ -145,10 +142,23 @@ app.post('/register', async (req, res) => {
 app.get('/login', (req, res) => {
     res.render('login');
 });
-app.post('/login', passport.authenticate('local', {
-    successRedirect: '/',
-    failureRedirect: '/login'
-}));
+
+app.post('/login', (req, res, next) => {
+    passport.authenticate('local', (err, user, info) => {
+        if (err) {
+            return next(err);
+        }
+        if (!user) {
+            return res.redirect('/login');
+        }
+        req.logIn(user, (err) => {
+            if (err) {
+                return next(err);
+            }
+            return res.redirect('/');
+        });
+    })(req, res, next);
+});
 
 // Logout
 app.post('/logout', (req, res) => {
@@ -156,136 +166,50 @@ app.post('/logout', (req, res) => {
     res.redirect('/');
 });
 
-/* Cart endpoint using GroceryStore class instead of direct routes 
-
-// Create cart
+// Cart routes
 app.post('/cart/add/:id', async (req, res) => {
     if (!req.user) {
-        console.log('User not logged in');
         return res.redirect('/login');
     }
     const productId = req.params.id;
     try {
-        await store.addToCart(req.user._id, productId);
+        await store.addToCart(req.user.id, productId); // Use GroceryStore method
         res.redirect('/');
     } catch (err) {
-        console.error('Error adding to cart:', err);
         res.status(500).send('Error adding to cart');
     }
 });
 
-// Read cart
 app.get('/cart', async (req, res) => {
     if (!req.user) {
-        console.log('User not logged in');
         return res.redirect('/login');
     }
     try {
-        const cartItems = await store.getCartItems(req.user._id);
+        const cartItems = await store.getCartItems(req.user.id);
         res.render('cart', { cartItems });
     } catch (err) {
-        console.error('Error fetching cart items:', err);
         res.status(500).send('Error fetching cart items');
     }
 });
 
-// Delete cart
+
 app.delete('/cart/remove/:id', async (req, res) => {
     if (!req.user) {
-        console.log('User not logged in');
         return res.redirect('/login');
     }
     const productId = req.params.id;
+    console.log(`Received DELETE request to remove product ${productId} from cart`);
     try {
-        await store.removeFromCart(req.user._id, productId);
+        await store.removeFromCart(req.user.id, productId); // Use the new method
         res.redirect('/cart');
     } catch (err) {
         console.error('Error removing from cart:', err);
         res.status(500).send('Error removing from cart');
     }
 });
-*/
-
-
-    // Direct operational routes
-// Create cart
-app.post('/cart/add/:id', async (req, res) => {
-    if (!req.user) {
-        console.log('User not logged in');
-        return res.redirect('/login');
-    }
-    const productId = req.params.id;
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) throw new Error('User not found');
-
-        const cartItem = user.cart.find(item => item.productId.toString() === productId);
-        if (cartItem) {
-            cartItem.quantity += 1;
-        } else {
-            user.cart.push({ productId: new mongoose.Types.ObjectId(productId), quantity: 1 });
-        }
-        await user.save();
-        res.redirect('/');
-    } catch (err) {
-        console.error('Error adding to cart:', err);
-        res.status(500).send('Error adding to cart');
-    }
-});
-
-// Read cart
-app.get('/cart', async (req, res) => {
-    if (!req.user) {
-        console.log('User not logged in');
-        return res.redirect('/login');
-    }
-    try {
-        const user = await User.findById(req.user._id).populate('cart.productId');
-        if (!user) throw new Error('User not found');
-
-        const cartItems = user.cart.map(item => ({
-            product: item.productId,
-            quantity: item.quantity
-        }));
-        res.render('cart', { cartItems });
-    } catch (err) {
-        console.error('Error fetching cart items:', err);
-        res.status(500).send('Error fetching cart items');
-    }
-});
-
-// Delete cart
-// Decrease quantity or remove product from cart
-app.delete('/cart/remove/:id', async (req, res) => {
-    if (!req.user) {
-        console.log('User not logged in');
-        return res.redirect('/login');
-    }
-    const productId = req.params.id;
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) throw new Error('User not found');
-
-        const cartItem = user.cart.find(item => item.productId.toString() === productId);
-        if (cartItem) {
-            if (cartItem.quantity > 1) {
-                cartItem.quantity -= 1;
-            } else {
-                user.cart = user.cart.filter(item => item.productId.toString() !== productId);
-            }
-            await user.save();
-        }
-        res.redirect('/cart');
-    } catch (err) {
-        console.error('Error removing from cart:', err);
-        res.status(500).send('Error removing from cart');
-    }
-});
-
-
 
 // Server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
