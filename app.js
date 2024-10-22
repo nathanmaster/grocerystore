@@ -68,7 +68,82 @@ app.post('/product/delete/:id', (req, res) => {
     }
 })
 
+<<<<<<< Updated upstream
 const PORT = process.env.PORT || 3000;
+=======
+// Login view + redirect
+app.get('/login', (req, res) => {
+    res.render('login');
+});
+
+app.post('/login', (req, res, next) => {
+    passport.authenticate('local', (err, user, info) => {
+        if (err) {
+            return next(err);
+        }
+        if (!user) {
+            return res.redirect('/login');
+        }
+        req.logIn(user, (err) => {
+            if (err) {
+                return next(err);
+            }
+            return res.redirect('/');
+        });
+    })(req, res, next);
+});
+
+// Logout
+app.post('/logout', (req, res) => {
+    req.logout();
+    res.redirect('/');
+});
+
+// Cart routes
+app.post('/cart/add/:id', async (req, res) => {
+    if (!req.user) {
+        return res.redirect('/login');
+    }
+    const productId = req.params.id;
+    try {
+        await store.addToCart(req.user.id, productId); // Use GroceryStore method
+        res.redirect('/');
+    } catch (err) {
+        res.status(500).send('Error adding to cart');
+    }
+});
+
+app.get('/cart', async (req, res) => {
+    if (!req.user) {
+        return res.redirect('/login');
+    }
+    try {
+        const cartItems = await store.getCartItems(req.user.id);
+        res.render('cart', { cartItems });
+    } catch (err) {
+        res.status(500).send('Error fetching cart items');
+    }
+});
+
+
+app.delete('/cart/remove/:id', async (req, res) => {
+    if (!req.user) {
+        return res.redirect('/login');
+    }
+    const productId = req.params.id;
+    console.log(`Received DELETE request to remove product ${productId} from cart`);
+    try {
+        await store.removeFromCart(req.user.id, productId);
+        res.redirect('/cart');
+    } catch (err) {
+        console.error('Error removing from cart:', err);
+        res.status(500).send('Error removing from cart');
+    }
+});
+
+// Server
+const PORT = process.env.PORT || 3000
+>>>>>>> Stashed changes
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 });
