@@ -68,9 +68,6 @@ app.post('/product/delete/:id', (req, res) => {
     }
 })
 
-<<<<<<< Updated upstream
-const PORT = process.env.PORT || 3000;
-=======
 // Login view + redirect
 app.get('/login', (req, res) => {
     res.render('login');
@@ -143,7 +140,6 @@ app.delete('/cart/remove/:id', async (req, res) => {
 
 // Server
 const PORT = process.env.PORT || 3000
->>>>>>> Stashed changes
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 });
